@@ -17,5 +17,20 @@ public class Square extends Shape {
 		this.drawSquare(g, this.x + SQUARE_DIMENSION, this.y + SQUARE_DIMENSION);
 	}
 
+	@Override
+	public int[][] getOccupiedSquares(int[] startSquareIndex) {
+		int[][] occupiedSquares = new int[4][2];
+		
+		int startX = startSquareIndex[0];
+		int startY = startSquareIndex[1];
+		
+		occupiedSquares[0] =  new int[] {startX, startY};
+		occupiedSquares[1] =  new int[] {startX + 1, startY};
+		occupiedSquares[2] =  new int[] {startX, startY + 1};
+		occupiedSquares[3] =  new int[] {startX + 1, startY + 1};
+		
+		return occupiedSquares;
+	}
+
 
 }

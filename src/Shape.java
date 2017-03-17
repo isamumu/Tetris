@@ -22,13 +22,13 @@ public abstract class Shape {
 		this.rightBoundary = rightBoundary;
 		this.leftBoundary = leftBoundary;
 		this.downBoundary = downBoundary;
-		this.orientation = orientation;
 		this.baseHeight = baseHeight;
 		this.baseWidth = baseWidth;
 		
-		this.setNewDimensions();
+		this.setOrientation(orientation);
 	}
 
+	public abstract int[][] getOccupiedSquares(int[] startSquareIndex);
 	
 	public abstract void drawSelf(Graphics g);
 
@@ -36,7 +36,12 @@ public abstract class Shape {
 	public boolean isWithinBounds() {
 		return !(this.x + this.width > this.rightBoundary)
 				&& !(this.x < this.leftBoundary)
-				&& !(this.y + this.height > this.downBoundary);
+				&& !hasReachedBottom();
+	}
+
+
+	public boolean hasReachedBottom() {
+		return this.y + this.height > this.downBoundary;
 	}
 	
 	public void setNewDimensions(){
@@ -53,23 +58,21 @@ public abstract class Shape {
 	public boolean isOutOfBounds() {
 		return !isWithinBounds();
 	}
+	
+	public void setOrientation(Orientation orientation) {
+		this.orientation = orientation;
+		this.setNewDimensions();
+	}
 
 	public void rotate(){
-		Orientation prevOrientation = this.orientation;
 		if (this.orientation == Orientation.UP) {
-			this.orientation = Orientation.RIGHT;
+			this.setOrientation(Orientation.RIGHT);
 		} else if (this.orientation == Orientation.RIGHT) {
-			this.orientation = Orientation.DOWN;
+			this.setOrientation(Orientation.DOWN);
 		} else if (this.orientation == Orientation.DOWN) {
-			this.orientation = Orientation.LEFT;
+			this.setOrientation(Orientation.LEFT);
 		} else {
-			this.orientation = Orientation.UP;
-		}
-		
-		this.setNewDimensions();
-		if(this.isOutOfBounds()) {
-			this.orientation = prevOrientation;
-			this.setNewDimensions();
+			this.setOrientation(Orientation.UP);
 		}
 	}
 	
