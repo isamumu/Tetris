@@ -1,5 +1,6 @@
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -7,6 +8,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 
 import javax.swing.BorderFactory;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
@@ -43,6 +45,8 @@ public class TetrisPanel extends JPanel implements ActionListener, KeyListener {
 	boolean[][] stickBox; 
 	Color[][] stickBoxColors;
 	int[] startSquareIndex;
+	int points;
+	Timer timer;
 	
 	public TetrisPanel() {
 		this.stickBox = new boolean[WIDTH_SQUARES][HEIGHT_SQUARES];
@@ -69,12 +73,12 @@ public class TetrisPanel extends JPanel implements ActionListener, KeyListener {
 		
 		this.currentShape = getRandomShape();
 
-		Timer timer = new Timer(100, this); // create a timer that goes off at
+		this.timer = new Timer(1000, this); // create a timer that goes off at
 											// specific times and does something
 											// at that time. That is why
 											// ActionListener is implemented
-//		timer.start(); // starts the time
-
+		this.timer.start(); // starts the time
+		this.points = 0;
 	}
 	
 	private int getLeftBounds() {
@@ -102,8 +106,7 @@ public class TetrisPanel extends JPanel implements ActionListener, KeyListener {
 		
 		int startX = ((leftBounds + rightBounds) / 2) - Shape.SQUARE_DIMENSION;
 		int startY = this.getUpBounds();
-		startSquareIndex[0] = (startX - TOTAL_BORDER_WIDTH) / Shape.SQUARE_DIMENSION;
-		startSquareIndex[1] = 0;
+		
 		
 		Orientation startOrient = Orientation.UP;
 
@@ -120,7 +123,10 @@ public class TetrisPanel extends JPanel implements ActionListener, KeyListener {
 		} else {
 			newShape = new T(startX, startY, rightBounds, leftBounds, downBounds, startOrient);
 		}
-
+		
+		startSquareIndex[0] = (startX - TOTAL_BORDER_WIDTH) / Shape.SQUARE_DIMENSION;
+		startSquareIndex[1] = -(newShape.height / Shape.SQUARE_DIMENSION);
+		
 		return newShape;
 	}
 
@@ -149,6 +155,12 @@ public class TetrisPanel extends JPanel implements ActionListener, KeyListener {
 		}
 		
 		this.currentShape.drawSelf(g);
+		
+		// Draw points
+		g.setColor(Color.BLACK);
+		g.setFont(new Font("Arial", Font.BOLD, 40));
+		g.drawString(Integer.toString(points), TOTAL_BORDER_WIDTH, TOTAL_BORDER_WIDTH * 4);
+	
 	}
 
 	// below is a method from the ActionListener interface
@@ -184,21 +196,7 @@ public class TetrisPanel extends JPanel implements ActionListener, KeyListener {
 		// this.getHeight(); //this is the height the panel including the
 		// border
 		
-		boolean resetShape = false;
-	
-		if(this.currentShape.isOutOfBounds()) {
-			resetShape = true;
-		} else {
-			// If shape is not out of bounds, check for collisions with other shapes
-			int [][] occupiedSquares = this.currentShape.getOccupiedSquares(this.startSquareIndex);
-			
-			for(int[] occupiedSquare : occupiedSquares){
-				if(stickBox[occupiedSquare[0]][occupiedSquare[1]]){
-					resetShape = true;
-					break;
-				}
-			}
-		}
+		boolean resetShape = shouldResetShape();
 
 		
 		if (resetShape) {
@@ -210,70 +208,24 @@ public class TetrisPanel extends JPanel implements ActionListener, KeyListener {
 			
 			// Check whether to sticky the shape
 			if(keyCode == KeyEvent.VK_DOWN){
+				// Actually sticky the shape
 				int [][] occupiedSquares = this.currentShape.getOccupiedSquares(this.startSquareIndex);
 				for(int[] occupiedSquare : occupiedSquares){
-					this.stickBox[occupiedSquare[0]][occupiedSquare[1]] = true;
-					this.stickBoxColors[occupiedSquare[0]][occupiedSquare[1]] = this.currentShape.color;
+					if(occupiedSquare[0] >= 0 && occupiedSquare[1] >= 0) {
+						this.stickBox[occupiedSquare[0]][occupiedSquare[1]] = true;
+						this.stickBoxColors[occupiedSquare[0]][occupiedSquare[1]] = this.currentShape.color;
+					}
 				}
 				
 				// Clear all the lines
-				for (int n = 0; n < HEIGHT_SQUARES; n++) {
-					// Should we clear line n?
-					boolean clearLine = true;
-					for (int l = 0; l < WIDTH_SQUARES; l++) {
-						if (!stickBox[l][n]) {
-							clearLine = false;
-						}
+				clearAllLines();
+				
+				// Check if shapes have stacked to the top, game is over then
+				for(int i = 0; i < WIDTH_SQUARES; i++){
+					if(stickBox[i][0]){
+						JOptionPane.showMessageDialog(null, String.format("GAME OVER\nTotal Points: %d", points));
+						System.exit(0);
 					}
-					
-					if(clearLine){
-						// Clear line n
-						for(int i = 0; i < WIDTH_SQUARES; i++) {
-							this.stickBoxColors[i][n] = BACKGROUND_COLOR;
-							this.stickBox[i][n] = false;
-						}
-						
-						// Shift lines above line n down as a whole
-						for(int lineToShift = n - 1; lineToShift >= 0; lineToShift--) {
-							int currentLine = lineToShift;
-							
-							while(true) {
-								// If currentLine is the bottom line, don't attempt to move it down
-								if ((currentLine + 1) >= HEIGHT_SQUARES) {
-									break;									
-								}
-								
-								// Check if you can move down the line
-								boolean canMoveLineDown = true;
-								
-								for(int i = 0; i < WIDTH_SQUARES; i++){
-									if(stickBox[i][currentLine] && stickBox[i][currentLine + 1]){
-										canMoveLineDown = false;
-									}
-								}
-								
-								if(canMoveLineDown) {
-									// Move currentLine down by 1
-									for(int i = 0; i < WIDTH_SQUARES; i++){
-										if(stickBox[i][currentLine]){
-											// Set the square below
-											this.stickBox[i][currentLine + 1] = true;
-											this.stickBoxColors[i][currentLine + 1] = this.stickBoxColors[i][currentLine];
-											
-											// Clear this square
-											this.stickBox[i][currentLine] = false;
-											this.stickBoxColors[i][currentLine] = BACKGROUND_COLOR;
-										}
-									}
-									
-									currentLine++;
-								} else {
-									break; // Can't move down anymore, stop moving line altogether
-								}
-							}
-						}
-					}
-
 				}
 				
 				// Get the next shape
@@ -286,6 +238,111 @@ public class TetrisPanel extends JPanel implements ActionListener, KeyListener {
 		
 		
 		
+	}
+
+	private boolean shouldResetShape() {
+		boolean resetShape = false;
+	
+		if(this.currentShape.isOutOfBounds()) {
+			resetShape = true;
+		} else {
+			// If shape is not out of bounds, check for collisions with other shapes
+			int [][] occupiedSquares = this.currentShape.getOccupiedSquares(this.startSquareIndex);
+			
+			for(int[] occupiedSquare : occupiedSquares){
+				if(occupiedSquare[0] >= 0 && occupiedSquare[1] >= 0) {
+					if(stickBox[occupiedSquare[0]][occupiedSquare[1]]){
+						resetShape = true;
+						break;
+					}
+				}
+			}
+		}
+		return resetShape;
+	}
+
+	private void clearAllLines() {
+		for (int n = 0; n < HEIGHT_SQUARES; n++) {
+			// Should we clear line n?
+			boolean clearLine = shouldBeCleared(n);
+			
+			if(clearLine){
+				// Clear line n
+				clearOneLine(n);
+				
+				// Shift lines above line n down as a whole
+				for(int lineToShift = n - 1; lineToShift >= 0; lineToShift--) {
+					int currentLine = lineToShift;
+					
+					while(true) {
+						// If currentLine is the bottom line, don't attempt to move it down
+						if ((currentLine + 1) >= HEIGHT_SQUARES) {
+							break;									
+						}
+						
+						// Check if you can move down the line
+						boolean canMoveLineDown = canMoveLineDown(currentLine);
+						
+						if(!canMoveLineDown) {
+							break;
+						}
+						
+						// Move currentLine down by 1
+						moveLineDownByOne(currentLine);
+						currentLine++;
+					}
+				}
+			}
+
+		}
+	}
+
+	private boolean canMoveLineDown(int currentLine) {
+		boolean canMoveLineDown = true;
+		
+		for(int i = 0; i < WIDTH_SQUARES; i++){
+			if(stickBox[i][currentLine] && stickBox[i][currentLine + 1]){
+				canMoveLineDown = false;
+			}
+		}
+		return canMoveLineDown;
+	}
+
+	private void clearOneLine(int n) {
+		for(int i = 0; i < WIDTH_SQUARES; i++) {
+			this.stickBoxColors[i][n] = BACKGROUND_COLOR;
+			this.stickBox[i][n] = false;
+		}
+		
+		this.points++;
+		
+		// Speed up the game
+		int currentDelay = this.timer.getDelay();
+		this.timer.setDelay((int) (currentDelay * 0.8));
+	}
+
+	private void moveLineDownByOne(int currentLine) {
+		for(int i = 0; i < WIDTH_SQUARES; i++){
+			if(stickBox[i][currentLine]){
+				// Set the square below
+				this.stickBox[i][currentLine + 1] = true;
+				this.stickBoxColors[i][currentLine + 1] = this.stickBoxColors[i][currentLine];
+				
+				// Clear this square
+				this.stickBox[i][currentLine] = false;
+				this.stickBoxColors[i][currentLine] = BACKGROUND_COLOR;
+			}
+		}
+	}
+
+	private boolean shouldBeCleared(int n) {
+		boolean clearLine = true;
+		for (int l = 0; l < WIDTH_SQUARES; l++) {
+			if (!stickBox[l][n]) {
+				clearLine = false;
+			}
+		}
+		return clearLine;
 	}
 
 	@Override

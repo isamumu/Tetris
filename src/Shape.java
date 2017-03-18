@@ -18,7 +18,6 @@ public abstract class Shape {
 
 	public Shape(int x, int y, int rightBoundary, int leftBoundary, int downBoundary, Orientation orientation, int baseHeight, int baseWidth) {
 		this.x = x;
-		this.y = y;
 		this.rightBoundary = rightBoundary;
 		this.leftBoundary = leftBoundary;
 		this.downBoundary = downBoundary;
@@ -26,6 +25,8 @@ public abstract class Shape {
 		this.baseWidth = baseWidth;
 		
 		this.setOrientation(orientation);
+		
+		this.y = y - this.height;
 	}
 
 	public abstract int[][] getOccupiedSquares(int[] startSquareIndex);
